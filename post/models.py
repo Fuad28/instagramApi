@@ -15,9 +15,9 @@ class Post(models.Model):
 
 
 
-class Images(models.Model):
-    img= models.ImageField(upload_to= "media/post_imgs", default= "default.png",  null= False, blank= False)
-    post= models.ForeignKey(Post, on_delete= models.CASCADE, related_name= "images")
+class PostMedia(models.Model):
+    media= models.FileField(upload_to= "media/post_imgs", default= "default.png",  null= False, blank= False)
+    post= models.ForeignKey(Post, on_delete= models.CASCADE, related_name= "post_media")
 
     def __str__(self):
         return str(self.post) + "_img"
