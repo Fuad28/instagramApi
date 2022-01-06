@@ -1,27 +1,21 @@
 from django.shortcuts import render
 
-from rest_framework.generics import GenericAPIView, ListCreateAPIView
+from  rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView, ListCreateAPIView
+from rest_framework.response import Response
 from rest_framework.viewsets import  ModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 
-from .serializers import PostMediaSerializer, PostCreateSerializer
-from .models import Post
+from .serializers import PostMediaSerializer, PostSerializer
+from .models import Post, PostMedia
 
-class PostCreateView(ModelViewSet):
+class PostView(ListCreateAPIView):
     queryset = Post.objects.all()
-    serializer_class= PostCreateSerializer
+    serializer_class= PostSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    # permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        post_data= PostCreateSerializer(data= request.data)
-        if post_data.is_valid(raise_exception=True):
-            media_data= request.FIles.getlist("files")
-            for media in media_data:
-                post_media= PostMediaSerializer(data= {"post": post_data, "media": media})
-                if post_media.is_valid(raise_exception=True):
-                    post_media.save()
-            
-            serializer= post_data.save()
-            return(serializer.data)
-
-
-
-
+    def get_serializer_context(self):
+        return {"request": self.request}

@@ -16,19 +16,19 @@ class Post(models.Model):
 
 
 class PostMedia(models.Model):
-    media= models.FileField(upload_to= "media/post_imgs", default= "default.png",  null= False, blank= False)
+    media= models.ImageField(upload_to= "media/post_imgs", default= "default.png",  null= False, blank= False)
     post= models.ForeignKey(Post, on_delete= models.CASCADE, related_name= "post_media")
 
     def __str__(self):
         return str(self.post) + "_img"
 
-    def save(self, *args, **kwargs) -> None:
-        """ To ensure a post has an image and the images are less than 5 """
+    # def save(self, *args, **kwargs) -> None:
+    #     """ To ensure a post has an image and the images are less than 5 """
 
-        if self.post.images.count() >= 5:
-            raise SuspiciousOperation('Post already contains 5 images.')
-        else:
-            super().save(*args, **kwargs)
+    #     if self.post.images.count() >= 5:
+    #         raise SuspiciousOperation('Post already contains 5 images.')
+    #     else:
+    #         super().save(*args, **kwargs)
 
 
 
