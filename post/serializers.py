@@ -4,6 +4,7 @@ from .models import Post, PostMedia
 from account.models import User
 from account.serializers import SimpleUserSerializer
 
+
 class PostMediaSerializer(serializers.ModelSerializer):
     post= serializers.UUIDField(read_only=True)
     class Meta:
@@ -11,21 +12,34 @@ class PostMediaSerializer(serializers.ModelSerializer):
         fields= ["id", "media", "post"]
 
 class PostSerializer(serializers.ModelSerializer):
-    post_media= PostMediaSerializer()
-
+    user= serializers.StringRelatedField()
     class Meta:
         model = Post
-        fields= ["id", "user_id", "post_media", "caption"]
+        fields= ["id", "user", "media", "caption"]
 
     def create(self, validated_data):
         request= self.context["request"]
+        print(request.data)
         post= PostSerializer(data= request.data)
         if post.is_valid(raise_exception=True):
-            post= Post.objects.create(user_id= 1, caption=  validated_data["caption"])
-            post_media= request.FILES.get("post_media.media") #validated_data["post_media"].get("media")
-            for media in post_media:
-                    post_media= PostMedia.objects.create(post_id= post.id, media= media)
+            post= Post.objects.create(user_id= request.user.id, caption=  validated_data["caption"], media= validated_data["media"])
         
         return post
 
 
+
+
+
+
+  # def create(self, validated_data):
+    #     request= self.context["request"]
+    #     post= PostSerializer(data= request.data)
+    #     if post.is_valid(raise_exception=True):
+    #         post= Post.objects.create(user_id= 1, caption=  validated_data["caption"])
+    #         post_media= request.FILES.get("post_media.media") #validated_data["post_media"].get("media")
+    #         for media in post_media:
+    #             post_media_serializer= PostMediaSerializer(data=  {"post":post, "media":media})
+    #             if post_media_serializer.is_valid(raise_exception=True):
+    #                 post_media= PostMedia.objects.create(post_id= post.id, media= media)
+        
+    #     return post
