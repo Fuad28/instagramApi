@@ -1,3 +1,4 @@
+from pprint import pprint
 from django.urls import path
 
 from rest_framework_nested import  routers
@@ -5,11 +6,11 @@ from rest_framework_nested import  routers
 from .import views
 
 router= routers.DefaultRouter()
-router.register("", views.PostView, basename= "posts")
+router.register("", views.PostViewSet, basename= "posts")
 
-urlpatterns= router.urls
+comments_router= routers.NestedDefaultRouter(router, "", lookup= "post")
+comments_router.register("comments", views.PostCommentsViewSet, basename= "post-comments")
 
 
-# urlpatterns = [
-#     path("new_post/", views.PostView.as_view(), name="new_post"),
-# ]
+
+urlpatterns= router.urls + comments_router.urls
