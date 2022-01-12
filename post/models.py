@@ -19,12 +19,16 @@ class PostComment(models.Model):
     user= models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comments')
     post= models.ForeignKey(Post, on_delete= models.CASCADE,  related_name= "post_comment")
     comment= models.CharField(max_length= 500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class CommentReply(models.Model):
     user= models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comment_reply')
     comment= models.ForeignKey(PostComment, on_delete= models.CASCADE,  related_name= "comment_reply")
     reply= models.CharField(max_length= 500)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 

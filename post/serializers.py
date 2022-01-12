@@ -1,6 +1,7 @@
 from django.conf import settings
 from rest_framework import serializers
-
+from rest_framework_nested.relations import  NestedHyperlinkedRelatedField
+from rest_framework_nested.serializers import NestedHyperlinkedModelSerializer
 from .models import Post, PostComment,  CommentReply
 from account.serializers import SimpleUserSerializer
 
@@ -19,12 +20,36 @@ class PostSerializer(serializers.ModelSerializer):
         
         return post
 
+class CommentReplySerializer(serializers.ModelSerializer):
+    user= serializers.HyperlinkedRelatedField(view_name= "users-detail", read_only= True, lookup_field= "username")
+    comment= NestedHyperlinkedRelatedField(read_only= True, view_name= "comments-detail", parent_lookup_kwargs = {'post_pk': 'post__pk'})
+
+    class Meta:
+        model = CommentReply
+        fields = ["id", "user", "comment", "reply"]
+    
+    def save(self, *args, **kwargs):
+        comment_pk= self.context["comment_pk"]
+        print(kwargs)
+        print(PostComment.objects.filter(id= comment_pk))
+        # user_id= self.context["request"].user.id
+        if PostComment.objects.filter(id= comment_pk).exists():
+            self.instance= CommentReply.objects.create(comment_id=comment_pk, user_id= 1, **self.validated_data)
+            return  self.instance
+           
+        else:
+            raise serializers.ValidationError("No comment with the given id was not found")  
+
+
 class PostCommentSerializer(serializers.ModelSerializer):
     user=  serializers.HyperlinkedRelatedField(view_name= "users-detail", read_only= True, lookup_field= "username")
     post= serializers.HyperlinkedRelatedField(view_name= "posts-detail", read_only= True)
+    # replies= CommentReplySerializer()
+
     class Meta:
         model= PostComment
         fields= ["id", "user","post", "comment"]
+        
 
     def save(self, *args, **kwargs):
         post_pk= self.context["post_pk"]
@@ -34,16 +59,10 @@ class PostCommentSerializer(serializers.ModelSerializer):
             return  self.instance
            
         else:
-            raise serializers.ValidationError("No post with the given id was found")
+            raise serializers.ValidationError("No post with the given id was not found")
 
-class CommentReplySerializer(serializers.ModelSerializer):
-    user= serializers.HyperlinkedRelatedField(view_name= "users-detail", read_only= True, lookup_field= "username")
-    comment= serializers.HyperlinkedRelatedField(view_name= "post-comments-detail", read_only= True)
 
-    class Meta:
-        model = CommentReply
-        fields = ["id", "user", "comment", "reply"]
-            
+  
 
 
 

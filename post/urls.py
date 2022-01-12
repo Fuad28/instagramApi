@@ -8,9 +8,14 @@ from .import views
 router= routers.DefaultRouter()
 router.register("", views.PostViewSet, basename= "posts")
 
-comments_router= routers.NestedDefaultRouter(router, "", lookup= "post")
-comments_router.register("comments", views.PostCommentsViewSet, basename= "post-comments")
+post_router= routers.NestedSimpleRouter(router, "", lookup= "post")
+post_router.register("comments", views.PostCommentsViewSet, basename= "comments")
+
+comment_router= routers.NestedSimpleRouter(post_router, "comments", lookup= "comment")
+comment_router.register("replies", views.CommentReplyViewSet, basename= "reply")
 
 
 
-urlpatterns= router.urls + comments_router.urls
+urlpatterns= router.urls + post_router.urls + comment_router.urls
+
+
