@@ -32,6 +32,20 @@ class PostViewSet(ModelViewSet):
 
     #     return [AllowAny()]
 
+class UsersPostsViewSet(ModelViewSet):
+    serializer_class= PostSerializer
+    parser_classes = [MultiPartParser, FormParser]
+    # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user_id= self.request.user.id
+        return Post.objects.filter(user_id= 1)
+
+        
+
+    def get_serializer_context(self):
+        return {"request": self.request}
+
 class PostCommentsViewSet(ModelViewSet):
     serializer_class = PostCommentSerializer
 

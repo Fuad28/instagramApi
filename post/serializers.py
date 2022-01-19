@@ -30,8 +30,6 @@ class CommentReplySerializer(serializers.ModelSerializer):
     
     def save(self, *args, **kwargs):
         comment_pk= self.context["comment_pk"]
-        print(kwargs)
-        print(PostComment.objects.filter(id= comment_pk))
         # user_id= self.context["request"].user.id
         if PostComment.objects.filter(id= comment_pk).exists():
             self.instance= CommentReply.objects.create(comment_id=comment_pk, user_id= 1, **self.validated_data)
@@ -44,7 +42,6 @@ class CommentReplySerializer(serializers.ModelSerializer):
 class PostCommentSerializer(serializers.ModelSerializer):
     user=  serializers.HyperlinkedRelatedField(view_name= "users-detail", read_only= True, lookup_field= "username")
     post= serializers.HyperlinkedRelatedField(view_name= "posts-detail", read_only= True)
-    # replies= CommentReplySerializer()
 
     class Meta:
         model= PostComment
