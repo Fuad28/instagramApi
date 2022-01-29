@@ -14,7 +14,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from post.models import Post
 from post.serializers import PostSerializer
 from.serializers import UserCreateSerializer, SimpleUserSerializer, FollowRelationsSerializer
-from .models  import FollowRelations
 from .pagination import DefaultPagination
 from .permissions import IsUserOrAdminUser
 
@@ -41,7 +40,7 @@ class UsersViewSet(ModelViewSet):
 
 class FollowRelationsView(ViewSet):
 
-    queryset= FollowRelations.objects.all()
+    queryset= User.objects.all()
     serializer_class= FollowRelationsSerializer
 
     def current_user(self):
@@ -55,7 +54,7 @@ class FollowRelationsView(ViewSet):
         # queryset=FollowRelations.objects.prefetch_related(
         #     "followers", 'following', 'pending', 'blocked').filter(
         #         user_id= User.objects.get(username=self.kwargs["user_username"]).id)
-        queryset=FollowRelations.objects.prefetch_related("followers", 'following', 'pending', 'blocked').filter(user_id= 1)
+        queryset=User.objects.prefetch_related("followers", 'following', "pending", 'blocked').filter(id= 1)
         serializer= FollowRelationsSerializer(queryset, many= True)
         return Response(serializer.data, status= status.HTTP_200_OK)
 
@@ -63,28 +62,31 @@ class FollowRelationsView(ViewSet):
         current_user= self.current_user()
         other_user= self.other_user(kwargs["username"])
 
+        # print(other_user.user_blocked.all())
+
         if other_user.private:
             #send request by adding to pending list
-            pend= FollowRelations.objects.get_or_create(user_id= other_user.id).pending.add(current_user)
-            serializer= FollowRelationsSerializer(pend)
+            pend= other_user.pending.add(current_user)
+            serializer= FollowRelationsSerializer(data= pend)
             serializer.is_valid(raise_exception= True)
             serializer.save()
             return Response(serializer.data, status= status.HTTP_200_OK) #{"Follow request: Follow request sent"}
 
-        elif other_user.blocked_user.filter(id= current_user.id).exists():
+        elif other_user.blocked.filter(id= current_user.id).exists():
             return Response({"Follow failed: You can't follow this user"}, status= status.HTTP_401_UNAUTHORIZED)
         
-        following= current_user.following.add(other_user) ##FollowRelations.objects.get_or_create(user_id= self.kwargs["users_pk"])
+        following= current_user.following.add(other_user)
         follower= other_user.followers.add(current_user)
-        serializer1= FollowRelationsSerializer(following)
-        serializer1.is_valid(raise_exception= True)
-        serializer1.save()
 
-        serializer2= FollowRelationsSerializer(follower)
-        serializer2.is_valid(raise_exception= True)
-        serializer2.save()
+        # serializer1= FollowRelationsSerializer(data= following)
+        # serializer1.is_valid(raise_exception= True)
+        # serializer1.save()
+
+        # serializer2= FollowRelationsSerializer(data= follower)
+        # serializer2.is_valid(raise_exception= True)
+        # serializer2.save()
         
-        return Response(serializer1.data, status= status.HTTP_200_OK) #{"Following" : "Following success!!"}
+        return Response({"Following" : "Following success!!"}, status= status.HTTP_200_OK) #{"Following" : "Following success!!"}
 
 
 
