@@ -9,9 +9,9 @@ from post import  views as post_views
 router= routers.DefaultRouter()
 router.register('', views.UsersViewSet, basename= "users")
 
-#follow endpoints
-# user_follow= routers.NestedDefaultRouter(router, "", lookup= "users")
-# user_follow.register('follow', views.FollowRelationsView, basename= "user-follow")
+#followrequest endpoints
+# follow_request= routers.NestedDefaultRouter(router, "", lookup= "users")
+# follow_request.register('pending', views.FollowRequestViewSet, basename= "follow-request")
 
 #to implement the comment and reply endpoints without rewritting 
 users_post= routers.NestedDefaultRouter(router, "", lookup= "users")
@@ -25,9 +25,11 @@ comment_router.register("replies", post_views.CommentReplyViewSet, basename= "re
 
 
 
-urlpatterns = router.urls + users_post.urls + post_router.urls + comment_router.urls +  [
+urlpatterns =[
     path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('follow/<str:username>/', views.FollowRelationsView.as_view({"post": "follow"}), name= "follow"),
-    path('unfollow/<str:username>/', views.FollowRelationsView.as_view({"post": "unfollow"}), name= "unfollow")
-]
+    path('pending/', views.FollowRequestViewSet.as_view({'get': 'list'}), name= "follow-request"),
+    path('pending/<int:pk>', views.FollowRequestViewSet.as_view({'get': 'details'}), name= "follow-request-detail"),
+    path('pending/<int:pk>/accept/', views.FollowRequestViewSet.as_view({'get': 'accept'}), name= "follow-request-accept"),
+    path('pending/<int:pk>/reject/', views.FollowRequestViewSet.as_view({'get': 'reject'}), name= "follow-request-reject"),
+    ] + router.urls + users_post.urls + post_router.urls + comment_router.urls

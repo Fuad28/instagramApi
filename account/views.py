@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from rest_framework.generics import GenericAPIView, ListCreateAPIView, RetrieveAPIView
 from rest_framework.viewsets import ModelViewSet, ViewSet
 from rest_framework.permissions import AllowAny,  IsAdminUser, IsAuthenticated,  IsAuthenticatedOrReadOnly
@@ -12,8 +13,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 
 from post.models import Post
+from .models import FollowRequest
 from post.serializers import PostSerializer
-from.serializers import UserCreateSerializer, SimpleUserSerializer, FollowRelationsSerializer
+from.serializers import UserCreateSerializer, SimpleUserSerializer, FollowRequestSerializer
 from .pagination import DefaultPagination
 from .permissions import IsUserOrAdminUser
 
@@ -37,56 +39,100 @@ class UsersViewSet(ModelViewSet):
             return  [IsUserOrAdminUser()]
         return [AllowAny()]
 
-
-class FollowRelationsView(ViewSet):
-
-    queryset= User.objects.all()
-    serializer_class= FollowRelationsSerializer
-
     def current_user(self):
-        # return get_object_or_404(User.objects.get(id= request.user.id))
-        return get_object_or_404(User.objects.filter(id= 1))
+        return self.request.user
         
     def other_user(self, username):
-        return get_object_or_404(User.objects.filter(username= username))
+        return get_object_or_404(User, username= username.title())
 
-    def get(self, request, *args, **kwargs):
-        # queryset=FollowRelations.objects.prefetch_related(
-        #     "followers", 'following', 'pending', 'blocked').filter(
-        #         user_id= User.objects.get(username=self.kwargs["user_username"]).id)
-        queryset=User.objects.prefetch_related("followers", 'following', "pending", 'blocked').filter(id= 1)
-        serializer= FollowRelationsSerializer(queryset, many= True)
+    @action(detail= False)
+    def followers(self, request, *args, **kwargs):
+        queryset= request.user.followers
+        print(queryset)
+        serializer= SimpleUserSerializer(queryset, many= True, context= {"request": self.request})
         return Response(serializer.data, status= status.HTTP_200_OK)
 
-    def follow(self, request, *args, **kwargs):
-        current_user= self.current_user()
-        other_user= self.other_user(kwargs["username"])
+    @action(detail= False)
+    def following(self, request, *args, **kwargs):
+        queryset= request.user.following
+        serializer= SimpleUserSerializer(queryset, many= True, context= {"request": self.request})
+        return Response(serializer.data, status= status.HTTP_200_OK)
 
-        # print(other_user.user_blocked.all())
+
+    @action(detail=True, methods=['get'])
+    def follow(self, request, username= None):
+        current_user= self.request.user
+        other_user= self.other_user(username)
 
         if other_user.private:
-            #send request by adding to pending list
-            pend= other_user.pending.add(current_user)
-            serializer= FollowRelationsSerializer(data= pend)
-            serializer.is_valid(raise_exception= True)
-            serializer.save()
-            return Response(serializer.data, status= status.HTTP_200_OK) #{"Follow request: Follow request sent"}
+            #send a follow request
+            FollowRequest.objects.create(requester= current_user, to_follow= other_user)
+            return Response({"Follow request: Follow request sent"}, status= status.HTTP_200_OK)
 
-        elif other_user.blocked.filter(id= current_user.id).exists():
-            return Response({"Follow failed: You can't follow this user"}, status= status.HTTP_401_UNAUTHORIZED)
-        
-        following= current_user.following.add(other_user)
-        follower= other_user.followers.add(current_user)
+        elif current_user not in other_user.followers:
+            current_user.follow(other_user)
+            return Response({"Following" : "Following success!!"}, status= status.HTTP_200_OK)
+        return Response({"Following" : "You follow them already!!"}, status= status.HTTP_200_OK)
 
-        # serializer1= FollowRelationsSerializer(data= following)
-        # serializer1.is_valid(raise_exception= True)
-        # serializer1.save()
+    @action(detail=True, methods=['get'])
+    def unfollow(self, request, username= None):
+        current_user= self.request.user
+        other_user= self.other_user(username)
 
-        # serializer2= FollowRelationsSerializer(data= follower)
-        # serializer2.is_valid(raise_exception= True)
-        # serializer2.save()
-        
-        return Response({"Following" : "Following success!!"}, status= status.HTTP_200_OK) #{"Following" : "Following success!!"}
+        if current_user in other_user.followers:
+            current_user.unfollow(other_user)
+            return Response({"Unfollowing" : "Unfollowing success!!"}, status= status.HTTP_200_OK)
+        return Response({"Unfollowing" : "You didn't follow them  before!!"}, status= status.HTTP_200_OK)
+
+    
+    @action(detail= False)
+    def blocking(self, request, *args, **kwargs):
+        queryset= request.user.blocking
+        serializer= SimpleUserSerializer(queryset, many= True, context= {"request": self.request})
+        return Response(serializer.data, status= status.HTTP_200_OK)
 
 
+    @action(detail=True, methods=['get'])
+    def block(self, request, username= None):
+        current_user= self.request.user
+        other_user= self.other_user(username)
 
+        if current_user not in other_user.blocking:
+            current_user.block(other_user)
+            return Response({"Blocking" : "Blocking success!!"}, status= status.HTTP_200_OK)
+        return Response({"Blocking" : "You've blocked them already!!"}, status= status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def unblock(self, request, username= None):
+        current_user= self.request.user
+        other_user= self.other_user(username)
+
+        if current_user in other_user.blocking:
+            current_user.unblock(other_user)
+            return Response({"Unblocking" : "Unblocking success!!"}, status= status.HTTP_200_OK)
+        return Response({"Unblocking" : "You didn't block this user before!!"}, status= status.HTTP_200_OK)
+
+
+class FollowRequestViewSet(ModelViewSet):
+    serializer_class= FollowRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return FollowRequest.objects.filter(to_follow_id= self.request.user.id)
+
+    def details(self, *args, **kwargs):
+        follow_request= FollowRequest.objects.get(id= kwargs.get("pk"))
+        serializer= FollowRequestSerializer(follow_request)
+        return Response(serializer.data, status= status.HTTP_200_OK)
+
+    def accept(self, request, pk= None, **kwargs):
+        follow_request= FollowRequest.objects.get(id= pk)
+        follow_request.accept
+        follow_request.delete()
+        return Response({"Follow Request" : "Request Accepted!!"}, status= status.HTTP_200_OK)
+
+    def reject(self, request, pk= None):
+        follow_request= FollowRequest.objects.get(id= pk)
+        follow_request.reject
+        follow_request.delete()
+        return Response({"Follow Request" : "Request Rejected!!"}, status= status.HTTP_200_OK)
